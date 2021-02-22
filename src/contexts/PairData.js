@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState } from 'react'
 
-import { client } from '../apollo/client'
+import { client,transclient } from '../apollo/client'
 import {
   PAIR_DATA,
   PAIR_CHART,
@@ -307,13 +307,16 @@ const getPairTransactions = async (pairAddress) => {
   const transactions = {}
 
   try {
-    let result = await client.query({
+    let result = await transclient.query({
       query: FILTERED_TRANSACTIONS,
       variables: {
         allPairs: [pairAddress],
       },
       fetchPolicy: 'no-cache',
     })
+    console.log("yyyyyy")
+    console.log(pairAddress)
+    console.log(FILTERED_TRANSACTIONS)
     transactions.mints = result.data.mints
     transactions.burns = result.data.burns
     transactions.swaps = result.data.swaps
@@ -602,6 +605,8 @@ export function usePairTransactions(pairAddress) {
     async function checkForTxns() {
       if (!pairTxns) {
         let transactions = await getPairTransactions(pairAddress)
+        console.log("xxxxxx")
+        console.log(transactions)
         updatePairTxns(pairAddress, transactions)
       }
     }

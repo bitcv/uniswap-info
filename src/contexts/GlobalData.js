@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useMemo, useCallback, useEffect, useState } from 'react'
-import { client } from '../apollo/client'
+import { client,transclient } from '../apollo/client'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import { useTimeframe } from './Application'
@@ -400,7 +400,7 @@ const getGlobalTransactions = async () => {
   let transactions = {}
 
   try {
-    let result = await client.query({
+    let result = await transclient.query({
       query: GLOBAL_TXNS,
       fetchPolicy: 'cache-first',
     })
