@@ -16,13 +16,16 @@ import {
   GLOBAL_CHART,
   ETH_PRICE,
   ALL_PAIRS,
+  USDT_PAIRS,
   ALL_TOKENS,
   TOP_LPS_PER_PAIRS,
+  USDT_CONTRACT_ADDRESS
 } from '../apollo/queries'
 import weekOfYear from 'dayjs/plugin/weekOfYear'
 import { useAllPairData } from './PairData'
 const UPDATE = 'UPDATE'
 const UPDATE_TXNS = 'UPDATE_TXNS'
+const UPDATE_USDT_PRICE = 'UPDATE_USDT_PRICE'
 const UPDATE_CHART = 'UPDATE_CHART'
 const UPDATE_ETH_PRICE = 'UPDATE_ETH_PRICE'
 const ETH_PRICE_KEY = 'ETH_PRICE_KEY'
@@ -74,7 +77,13 @@ function reducer(state, { type, payload }) {
         ethPriceChange,
       }
     }
-
+    case UPDATE_USDT_PRICE: {
+      const { allUsdtPairs } = payload
+      return {
+        ...state,
+        allUsdtPairs
+      }
+    }
     case UPDATE_ALL_PAIRS_IN_UNISWAP: {
       const { allPairs } = payload
       return {
@@ -145,6 +154,15 @@ export default function Provider({ children }) {
     })
   }, [])
 
+  const updatePairsUSDTPrice = useCallback((allUsdtPairs) => {
+    dispatch({
+      type: UPDATE_USDT_PRICE,
+      payload: {
+        allUsdtPairs
+      },
+    })
+  }, [])
+
   const updateAllPairsInUniswap = useCallback((allPairs) => {
     dispatch({
       type: UPDATE_ALL_PAIRS_IN_UNISWAP,
@@ -184,6 +202,7 @@ export default function Provider({ children }) {
             updateTopLps,
             updateAllPairsInUniswap,
             updateAllTokensInUniswap,
+            updatePairsUSDTPrice,
           },
         ],
         [
@@ -195,6 +214,7 @@ export default function Provider({ children }) {
           updateEthPrice,
           updateAllPairsInUniswap,
           updateAllTokensInUniswap,
+          updatePairsUSDTPrice,
         ]
       )}
     >
@@ -469,6 +489,43 @@ const getEthPrice = async () => {
 const PAIRS_TO_FETCH = 500
 const TOKENS_TO_FETCH = 500
 
+async function getAllUsdtPairs(){
+   try {
+    let allFound = false
+    let pairs = []
+    let skipCount = 0
+    while (!allFound) {
+      let result = await client.query({
+        query: USDT_PAIRS,
+        variables: {
+          skip: skipCount,
+        },
+        fetchPolicy: 'cache-first',
+      })
+      skipCount = skipCount + PAIRS_TO_FETCH
+      pairs = pairs.concat(result?.data?.pairs)
+      if (result?.data?.pairs.length < PAIRS_TO_FETCH || pairs.length > PAIRS_TO_FETCH) {
+        allFound = true
+      }
+    }
+    let pricePairMap = {}
+    for(let idx in pairs){
+        pricePairMap[pairs[idx].token0.id.toLowerCase()]= {
+          symbol: pairs[idx].token0.symbol,
+          price: pairs[idx].token1Price
+        }
+    }
+    pricePairMap[USDT_CONTRACT_ADDRESS.toLowerCase()] = {
+      symbol: 'USDT',
+      price: 1.0
+    }
+    console.log("zzzzz")
+    console.log(pricePairMap)
+    return pricePairMap
+  } catch (e) {
+    console.log(e)
+  }
+}
 /**
  * Loop through every pair on uniswap, used for search
  */
@@ -529,7 +586,7 @@ async function getAllTokensOnUniswap() {
  * Hook that fetches overview data, plus all tokens and pairs for search
  */
 export function useGlobalData() {
-  const [state, { update, updateAllPairsInUniswap, updateAllTokensInUniswap }] = useGlobalDataContext()
+  const [state, { update, updateAllPairsInUniswap, updatePairsUSDTPrice, updateAllTokensInUniswap }] = useGlobalDataContext()
   const [ethPrice, oldEthPrice] = useEthPrice()
 
   const data = state?.globalData
@@ -544,11 +601,14 @@ export function useGlobalData() {
 
       let allTokens = await getAllTokensOnUniswap()
       updateAllTokensInUniswap(allTokens)
+
+      let allUsdtPairs = await getAllUsdtPairs()
+      updatePairsUSDTPrice(allUsdtPairs)
     }
     if (!data && ethPrice && oldEthPrice) {
       fetchData()
     }
-  }, [ethPrice, oldEthPrice, update, data, updateAllPairsInUniswap, updateAllTokensInUniswap])
+  }, [ethPrice, oldEthPrice, update, data, updatePairsUSDTPrice, updateAllPairsInUniswap, updateAllTokensInUniswap])
 
   return data || {}
 }
@@ -629,6 +689,21 @@ export function useAllPairsInUniswap() {
   let allPairs = state?.allPairs
 
   return allPairs || []
+}
+
+export function useAllUsdtPairs() {
+  const [state, { updatePairsUSDTPrice }] = useGlobalDataContext()
+  let allUsdtPairs = state?.allUsdtPairs
+   useEffect(() => {
+    async function fetchData() {
+      if (!allUsdtPairs) {
+        let txns = await getAllUsdtPairs()
+        updatePairsUSDTPrice(txns)
+      }
+    }
+    fetchData()
+  }, [updatePairsUSDTPrice, allUsdtPairs])
+  return allUsdtPairs || {}
 }
 
 export function useAllTokensInUniswap() {

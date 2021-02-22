@@ -7,7 +7,7 @@ import { formatTime, formattedNum, urls } from '../../utils'
 import { useMedia } from 'react-use'
 import { useCurrentCurrency } from '../../contexts/Application'
 import { RowFixed, RowBetween } from '../Row'
-
+import { useAllUsdtPairs } from '../../contexts/GlobalData'
 import LocalLoader from '../LocalLoader'
 import { Box, Flex, Text } from 'rebass'
 import Link from '../Link'
@@ -160,7 +160,70 @@ function getTransactionType(event, symbol0, symbol1) {
       return ''
   }
 }
+function _calculateTSAmountUSD(transactions, allUsdtPairs){
+  let ret = transactions
+  for(let idx in ret){
+    let item = transactions[idx]
+    let token0 = allUsdtPairs[item.pair.token0.id.toLowerCase()]
+    let token1 = allUsdtPairs[item.pair.token1.id.toLowerCase()]
+    // console.log(item.pair.token0.symbol)
+    if(item.amount0In == "0"){
+      if(item.pair.token1.symbol.toLowerCase() == "usdt"){
+        ret[idx]['amountUSD'] = parseFloat(item.amount1In)
+        continue;
+      } 
+      if(token0){
+        ret[idx]['amountUSD'] = parseFloat(item.amount0Out) * parseFloat(token0.price)
+      } else if(token1){
+        ret[idx]['amountUSD'] = parseFloat(item.amount1In) * parseFloat(token1.price)
+      }
+        // console.log(ret[idx]['amountUSD'] + " " + item.amount0Out + " " + token0.price)
+    } else {
+      if(item.pair.token1.symbol.toLowerCase() == "usdt"){
+        ret[idx]['amountUSD'] = parseFloat(item.amount1Out)
+        continue;
+      }
+      if(token0){
+        ret[idx]['amountUSD'] = parseFloat(item.amount0In) * parseFloat(token0.price)
+      }
+      else if(token1){
+        ret[idx]['amountUSD'] = parseFloat(item.amount1Out) * parseFloat(token1.price)
+      }
+        // console.log(ret[idx]['amountUSD'] + " " + item.amount0In + " " + token0.price)
+    }
 
+  }
+  
+  return ret
+}
+function _calculateTAmountUSD(transactions, allUsdtPairs){
+  let ret = transactions
+  for(let idx in ret){
+    let item = transactions[idx]
+    let token0 = allUsdtPairs[item.pair.token0.id.toLowerCase()]
+    let token1 = allUsdtPairs[item.pair.token1.id.toLowerCase()]
+    
+    if(item.pair.token0.symbol.toLowerCase() == "usdt"){
+      ret[idx]['amountUSD'] = parseFloat(item.amount0) * 2
+      continue;
+    }
+    if(item.pair.token1.symbol.toLowerCase() == "usdt"){
+      ret[idx]['amountUSD'] = parseFloat(item.amount1) * 2
+      continue;
+    }
+    if(token0 && token1) {
+      ret[idx]['amountUSD'] = parseFloat(item.amount0) * parseFloat(token0.price) + parseFloat(item.amount1) * parseFloat(token1.price)
+    }
+  }
+  return ret
+}
+function calculateMTAmountUSD(transactions, allUsdtPairs){
+   let ret = transactions
+   ret['burns'] = _calculateTAmountUSD(transactions['burns'], allUsdtPairs)
+   ret['mints'] = _calculateTAmountUSD(transactions['mints'], allUsdtPairs)
+   ret['swaps'] = _calculateTSAmountUSD(transactions['swaps'], allUsdtPairs)
+   return transactions 
+}
 // @TODO rework into virtualized list
 function TxnList({ transactions, symbol0Override, symbol1Override, color }) {
   // page state
@@ -175,17 +238,29 @@ function TxnList({ transactions, symbol0Override, symbol1Override, color }) {
 
   const [currency] = useCurrentCurrency()
 
+  let  transList = transactions
+  const allUsdtPairs = useAllUsdtPairs()
+  if (transList && transList.mints && transList.burns && transList.swaps && 
+  Object.keys(allUsdtPairs).length > 0){
+    transList = calculateMTAmountUSD(transList, allUsdtPairs)
+  } 
+  console.log("xxxxx")
+  console.log(transList)
+  console.log("yyyyy")
+  console.log(allUsdtPairs)
+
   useEffect(() => {
     setMaxPage(1) // edit this to do modular
     setPage(1)
-  }, [transactions])
+  }, [transList])
 
   // parse the txns and format for UI
   useEffect(() => {
-    if (transactions && transactions.mints && transactions.burns && transactions.swaps) {
+
+       if (transList && transList.mints && transList.burns && transList.swaps) {
       let newTxns = []
-      if (transactions.mints.length > 0) {
-        transactions.mints.map((mint) => {
+      if (transList.mints.length > 0) {
+        transList.mints.map((mint) => {
           let newTxn = {}
           newTxn.hash = mint.transaction.id
           newTxn.timestamp = mint.transaction.timestamp
@@ -199,8 +274,8 @@ function TxnList({ transactions, symbol0Override, symbol1Override, color }) {
           return newTxns.push(newTxn)
         })
       }
-      if (transactions.burns.length > 0) {
-        transactions.burns.map((burn) => {
+      if (transList.burns.length > 0) {
+        transList.burns.map((burn) => {
           let newTxn = {}
           newTxn.hash = burn.transaction.id
           newTxn.timestamp = burn.transaction.timestamp
@@ -214,8 +289,8 @@ function TxnList({ transactions, symbol0Override, symbol1Override, color }) {
           return newTxns.push(newTxn)
         })
       }
-      if (transactions.swaps.length > 0) {
-        transactions.swaps.map((swap) => {
+      if (transList.swaps.length > 0) {
+        transList.swaps.map((swap) => {
           const netToken0 = swap.amount0In - swap.amount0Out
           const netToken1 = swap.amount1In - swap.amount1Out
 
@@ -260,7 +335,7 @@ function TxnList({ transactions, symbol0Override, symbol1Override, color }) {
         setMaxPage(Math.floor(filtered.length / ITEMS_PER_PAGE) + extraPages)
       }
     }
-  }, [transactions, txFilter])
+  }, [transList, txFilter])
 
   useEffect(() => {
     setPage(1)

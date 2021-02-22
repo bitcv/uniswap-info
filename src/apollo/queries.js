@@ -771,6 +771,27 @@ export const TOKENS_CURRENT = gql`
     }
   }
 `
+export const USDT_CONTRACT_ADDRESS = '0xa71edc38d189767582c38a3145b5873052c3e47a'
+
+export const USDT_PAIRS = gql`
+query pairs($skip: Int!) {
+    pairs(first: 500, skip: $skip, where: { token1_in:["${USDT_CONTRACT_ADDRESS}"] }  orderBy: trackedReserveETH, orderDirection: desc) {
+      ...{ 
+      id,
+      token0 {
+        id
+        symbol
+      }
+    	token0Price
+      token1 {
+        id
+        symbol
+      }
+      token1Price
+      }
+    }
+  }
+`
 
 export const TOKENS_DYNAMIC = (block) => {
   const queryString = `
