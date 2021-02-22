@@ -15,9 +15,10 @@ import PinnedData from './components/PinnedData'
 
 import SideNav from './components/SideNav'
 import AccountLookup from './pages/AccountLookup'
-import { OVERVIEW_TOKEN_BLACKLIST, PAIR_BLACKLIST } from './constants'
+import { PAIR_BLACKLIST } from './constants'
 import LocalLoader from './components/LocalLoader'
 import { useLatestBlocks } from './contexts/Application'
+import GoogleAnalyticsReporter from './components/analytics/GoogleAnalyticsReporter'
 
 const AppWrapper = styled.div`
   position: relative;
@@ -119,15 +120,13 @@ function App() {
         globalChartData &&
         Object.keys(globalChartData).length > 0 ? (
           <BrowserRouter>
+            <Route component={GoogleAnalyticsReporter} />
             <Switch>
               <Route
                 exacts
                 strict
                 path="/token/:tokenAddress"
                 render={({ match }) => {
-                  if (OVERVIEW_TOKEN_BLACKLIST.includes(match.params.tokenAddress.toLowerCase())) {
-                    return <Redirect to="/home" />
-                  }
                   if (isAddress(match.params.tokenAddress.toLowerCase())) {
                     return (
                       <LayoutWrapper savedOpen={savedOpen} setSavedOpen={setSavedOpen}>

@@ -12,7 +12,7 @@ import { Divider } from '..'
 import { formattedNum, formattedPercent } from '../../utils'
 import { useMedia } from 'react-use'
 import { withRouter } from 'react-router-dom'
-import { OVERVIEW_TOKEN_BLACKLIST } from '../../constants'
+import { TOKEN_BLACKLIST } from '../../constants'
 import FormattedName from '../FormattedName'
 import { TYPE } from '../../Theme'
 
@@ -90,8 +90,7 @@ const ClickableText = styled(Text)`
     opacity: 0.6;
   }
   user-select: none;
-  color: ${({ theme }) => theme.text1};
-
+  color: ${({ theme }) => theme.text1} !important;
   @media screen and (max-width: 640px) {
     font-size: 0.85rem;
   }
@@ -100,7 +99,7 @@ const ClickableText = styled(Text)`
 const DataText = styled(Flex)`
   align-items: center;
   text-align: center;
-  color: ${({ theme }) => theme.text1};
+  color: ${({ theme }) => theme.text1} !important;
 
   & > * {
     font-size: 14px;
@@ -145,7 +144,7 @@ function TopTokenList({ tokens, itemMax = 10, useTracked = false }) {
       tokens &&
       Object.keys(tokens)
         .filter((key) => {
-          return !OVERVIEW_TOKEN_BLACKLIST.includes(key)
+          return !TOKEN_BLACKLIST.includes(key)
         })
         .map((key) => tokens[key])
     )
